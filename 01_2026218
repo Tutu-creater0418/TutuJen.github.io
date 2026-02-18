@@ -1,0 +1,67 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.ndimage import gaussian_filter
+from mpl_toolkits.mplot3d import Axes3D
+
+size = 300          
+sigma_val = 9
+threshold = 0.5     
+
+def create_mask(with_serif=False):
+    mask = np.zeros((size, size))
+    x1, x2, y1, y2 = 100, 200, 100, 200
+    mask[x1:x2, y1:y2] = 1
+    if with_serif:
+        s_size = 20
+        mask[x1-s_size:x1, y1-s_size:y1] = 1
+        mask[x1-s_size:x1, y2:y2+s_size] = 1
+        mask[x2:x2+s_size, y1-s_size:y1] = 1
+        mask[x2:x2+s_size, y2:y2+s_size] = 1
+    return mask
+
+def calculate_iou(target, result):
+    intersection = np.logical_and(target, result)
+    union = np.logical_or(target, result)
+    iou_score = np.sum(intersection) / np.sum(union)
+    return iou_score
+
+mask_orig = create_mask(with_serif=False)
+mask_opc = create_mask(with_serif=True)
+
+diff_orig = gaussian_filter(mask_orig, sigma=sigma_val)
+diff_opc = gaussian_filter(mask_opc, sigma=sigma_val)
+
+print_orig = (diff_orig > threshold).astype(float)
+print_opc = (diff_opc > threshold).astype(float)
+
+iou_orig = calculate_iou(mask_orig, print_orig)
+iou_opc = calculate_iou(mask_orig, print_opc)
+
+plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei'] 
+plt.rcParams['axes.unicode_minus'] = False
+
+fig1, axes = plt.subplots(2, 3, figsize=(15, 10))
+
+axes[0, 0].imshow(mask_orig, cmap='gray'); axes[0, 0].set_title("原始遮罩 (無修正)")
+axes[0, 1].imshow(print_orig, cmap='gray'); axes[0, 1].set_title(f"印出結果 (IoU: {iou_orig:.4f})")
+axes[0, 2].imshow(np.abs(mask_orig - print_orig), cmap='Reds'); axes[0, 2].set_title("誤差分佈 (紅色區域)")
+
+axes[1, 0].imshow(mask_opc, cmap='gray'); axes[1, 0].set_title("OPC 遮罩 (增加 Serif)")
+axes[1, 1].imshow(print_opc, cmap='gray'); axes[1, 1].set_title(f"OPC 印出結果 (IoU: {iou_opc:.4f})")
+axes[1, 2].imshow(np.abs(mask_orig - print_opc), cmap='Reds'); axes[1, 2].set_title("OPC 誤差分佈 (明顯減少)")
+
+fig2 = plt.figure(figsize=(10, 7))
+ax = fig2.add_subplot(111, projection='3d')
+X, Y = np.meshgrid(np.linspace(0, size, size), np.linspace(0, size, size))
+surf = ax.plot_surface(X, Y, diff_opc, cmap='magma', edgecolor='none', alpha=0.8)
+ax.set_title("3D 光強度分佈圖 (OPC 修正後)")
+ax.set_zlabel("光強度")
+fig2.colorbar(surf, shrink=0.5, aspect=5)
+
+plt.show()
+
+print("-" * 30)
+print(f"無修正 IoU 精確度: {iou_orig:.4f}")
+print(f"OPC 修正後 IoU 精確度: {iou_opc:.4f}")
+print(f"精確度提升幅度: {((iou_opc - iou_orig) / iou_orig * 100):.2f}%")
+print("-" * 30)
