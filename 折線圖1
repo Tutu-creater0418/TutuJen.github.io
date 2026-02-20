@@ -1,0 +1,38 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Feb 20 10:45:36 2026
+
+@author: User
+"""
+import matplotlib.pyplot as plt
+
+plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei'] 
+plt.rcParams['axes.unicode_minus'] = False
+
+x = [7, 9, 11, 13, 15, 17, 19, 21]
+y = [-0.25, 2.1, 2.59, 2.97, 3.29, 3.73, 4.2, 4.77]
+
+plt.figure(figsize=(10, 6))
+
+plt.plot(x, y, color='black', linestyle='-', marker='o', 
+         markersize=8, markeredgecolor='white', linewidth=2, label='提升幅度(%)')
+
+for i in range(len(x)):
+    offset = -0.6 if y[i] >= 0 else 0.5
+    
+    plt.text(x[i], y[i] + offset, f'{y[i]}%', 
+             ha='center',
+             va='bottom' if y[i] >= 0 else 'top',
+             fontsize=10, 
+             color='darkblue',
+             fontweight='bold')
+
+plt.title("圖1: s_size 為 15 (數據分析)", fontsize=16, pad=20)
+plt.xlabel("sigma_val", fontsize=12)
+plt.ylabel("精確度(IoU)提升幅度(%)", fontsize=12)
+
+plt.axhline(0, color='gray', linewidth=1, linestyle='--')
+plt.grid(True, axis='y', linestyle=':', alpha=0.5)
+plt.xticks(x) 
+
+plt.show()
