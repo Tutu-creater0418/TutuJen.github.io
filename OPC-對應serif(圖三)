@@ -1,0 +1,93 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.ndimage import gaussian_filter
+
+size = 300
+threshold = 0.5
+sigma_range = range(5, 16)  
+
+def create_mask(s_size=0):
+    mask = np.zeros((size, size))
+    x1, x2, y1, y2 = 100, 200, 100, 200
+    mask[x1:x2, y1:y2] = 1
+    if s_size > 0:
+        mask[x1-s_size:x1, y1-s_size:y1] = 1
+        mask[x1-s_size:x1, y2:y2+s_size] = 1
+        mask[x2:x2+s_size, y1-s_size:y1] = 1
+        mask[x2:x2+s_size, y2:y2+s_size] = 1
+    return mask
+
+def get_iou(target, result):
+    intersection = np.logical_and(target, result)
+    union = np.logical_or(target, result)
+    if np.sum(union) == 0: return 0
+    return np.sum(intersection) / np.sum(union)
+
+results_sigma = []
+results_improvement = []
+results_best_s = []
+
+mask_orig = create_mask(s_size=0)
+
+print("計算ing")
+for sig in sigma_range:
+    diff_none = gaussian_filter(mask_orig, sigma=sig)
+    print_none = (diff_none > threshold).astype(float)
+    iou_none = get_iou(mask_orig, print_none)
+    
+    best_iou = 0
+    best_s = 0
+    
+    for s in range(1, 40):
+        m_opc = create_mask(s_size=s)
+        d_opc = gaussian_filter(m_opc, sigma=sig)
+        p_opc = (d_opc > threshold).astype(float)
+        current_iou = get_iou(mask_orig, p_opc)
+        if current_iou > best_iou:
+            best_iou = current_iou
+            best_s = s
+    
+    improvement = (best_iou - iou_none) / iou_none * 100
+    
+    results_sigma.append(sig)
+    results_improvement.append(round(improvement, 2))
+    results_best_s.append(best_s)
+    print(f"Sigma: {sig:2d} | 最佳 s_size: {best_s:2d} | 提升: {improvement:.2f}%")
+
+plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei'] 
+plt.rcParams['axes.unicode_minus'] = False
+
+x = results_sigma
+y = results_improvement
+
+plt.figure(figsize=(12, 7))
+
+plt.plot(x, y, color='black', linestyle='-', marker='o', 
+         markersize=8, markeredgecolor='white', linewidth=2, label='最大提升幅度(%)')
+
+for i in range(len(x)):
+    offset = 0.3  
+    va = 'bottom' 
+    
+    label_text = f'{y[i]}%\n(s={results_best_s[i]})'
+    
+    plt.text(x[i], y[i] + offset, label_text, 
+             ha='center',
+             va=va,
+             fontsize=10, 
+             color='darkblue',
+             fontweight='bold',
+             bbox=dict(facecolor='white', alpha=0.7, edgecolor='none', pad=1))
+
+plt.title("圖3：不同 Sigma 值對應之最佳 OPC 修正效果", fontsize=16, pad=20)
+plt.xlabel("Sigma (模糊程度)", fontsize=12)
+plt.ylabel("精確度(IoU)提升幅度(%)", fontsize=12)
+
+plt.axhline(0, color='gray', linewidth=1, linestyle='--')
+plt.grid(True, axis='y', linestyle=':', alpha=0.5)
+plt.xticks(x) 
+
+plt.ylim(min(y) - 1, max(y) + 2) 
+
+plt.tight_layout()
+plt.show()
